@@ -1,9 +1,10 @@
 """Bayesian functions."""
 
 import warnings
+from math import exp, lgamma, log, pi
+
 import numpy as np
 from scipy.integrate import quad
-from math import pi, exp, log, lgamma
 
 __all__ = ["bayesfactor_ttest", "bayesfactor_pearson", "bayesfactor_binom"]
 
@@ -36,13 +37,8 @@ def bayesfactor_ttest(t, nx, ny=None, paired=False, alternative="two-sided", r=0
         Specify whether the two observations are related (i.e. repeated
         measures) or independent.
     alternative : string
-        Defines the alternative hypothesis, or tail of the test. Must be one of
-        "two-sided" (default), "greater" or "less".
-
-        .. warning:: One-sided Bayes Factor (BF) are simply obtained by
-            doubling the two-sided BF, which is not the same behavior
-            as R or JASP. Be extra careful when interpretating one-sided BF,
-            and if you can, always double-check your results.
+        Defines the alternative hypothesis, or tail of the test. As of Pingouin 0.6.x, only
+        "two-sided" is supported.
     r : float
         Cauchy scale factor. Smaller values of ``r`` (e.g. 0.5), may be
         appropriate when small effect sizes are expected a priori; larger
@@ -108,21 +104,11 @@ def bayesfactor_ttest(t, nx, ny=None, paired=False, alternative="two-sided", r=0
     >>> bf = bayesfactor_ttest(3.5, 20, 20, paired=True)
     >>> print("Bayes Factor: %.3f (two-sample paired)" % bf)
     Bayes Factor: 17.185 (two-sample paired)
-
-    3. Now specifying the direction of the test
-
-    >>> tval = -3.5
-    >>> bf_greater = bayesfactor_ttest(tval, 20, alternative='greater')
-    >>> bf_less = bayesfactor_ttest(tval, 20, alternative='less')
-    >>> print("BF10-greater: %.3f | BF10-less: %.3f" % (bf_greater, bf_less))
-    BF10-greater: 0.029 | BF10-less: 34.369
     """
     # Check tail
-    assert alternative in [
-        "two-sided",
-        "greater",
-        "less",
-    ], "Alternative must be one of 'two-sided' (default), 'greater' or 'less'."
+    assert alternative == "two-sided", (
+        "Alternative must be 'two-sided' (default). One-sided tests are not supported."
+    )
     one_sample = True if ny is None or ny == 1 else False
 
     # Check T-value
@@ -153,12 +139,6 @@ def bayesfactor_ttest(t, nx, ny=None, paired=False, alternative="two-sided", r=0
     with np.errstate(divide="ignore"):
         bf10 = 1 / ((1 + t**2 / df) ** (-(df + 1) / 2) / integr)
 
-    # Tail
-    tail_binary = "two-sided" if alternative == "two-sided" else "one-sided"
-    bf10 = bf10 * (1 / 0.5) if tail_binary == "one-sided" else bf10
-    # Now check the direction of the test
-    if ((alternative == "greater" and t < 0) or (alternative == "less" and t > 0)) and bf10 > 1:
-        bf10 = 1 / bf10
     return bf10
 
 
@@ -258,18 +238,18 @@ def bayesfactor_pearson(r, n, alternative="two-sided", method="ly", kappa=1.0):
 
     Compare to Wetzels method:
 
-    >>> bf = bayesfactor_pearson(r, n, method='wetzels')
+    >>> bf = bayesfactor_pearson(r, n, method="wetzels")
     >>> print("Bayes Factor: %.3f" % bf)
     Bayes Factor: 8.221
 
     One-sided test
 
-    >>> bf10pos = bayesfactor_pearson(r, n, alternative='greater')
-    >>> bf10neg = bayesfactor_pearson(r, n, alternative='less')
+    >>> bf10pos = bayesfactor_pearson(r, n, alternative="greater")
+    >>> bf10neg = bayesfactor_pearson(r, n, alternative="less")
     >>> print("BF-pos: %.3f, BF-neg: %.3f" % (bf10pos, bf10neg))
     BF-pos: 21.185, BF-neg: 0.082
     """
-    from scipy.special import gamma, betaln, hyp2f1
+    from scipy.special import betaln, gamma, hyp2f1
 
     assert method.lower() in ["ly", "wetzels"], "Method not recognized."
     assert alternative in [
@@ -320,24 +300,62 @@ def bayesfactor_pearson(r, n, alternative="two-sided", method="ly", kappa=1.0):
 
         if alternative != "two-sided":
             # Directional test.
-            # We need mpmath for the generalized hypergeometric function
+            # We need mpmath for the generalized hypergeometric function.
+            # We also recompute bf10 in mpmath to avoid catastrophic cancellation
+            # when bf10pos or bf10neg is much smaller than bf10 (e.g. large |r|
+            # with the "wrong" sign). See https://github.com/raphaelvallat/pingouin/issues/427
             from .utils import _is_mpmath_installed
 
             _is_mpmath_installed(raise_error=True)
-            from mpmath import hyp3f2
+            import mpmath
 
-            hyper_term = float(hyp3f2(1, n / 2, n / 2, 3 / 2, (2 + k * (n + 1)) / (2 * k), r**2))
-            log_term = 2 * (lgamma(n / 2) - lgamma((n - 1) / 2)) - lbeta
-            C = 2 ** ((3 * k - 2) / k) * k * r / (2 + (n - 1) * k) * exp(log_term) * hyper_term
+            mp_k = mpmath.mpf(k)
+            mp_n = mpmath.mpf(n)
+            mp_r = mpmath.mpf(r)
 
-            bf10neg = bf10 - C
-            bf10pos = 2 * bf10 - bf10neg
+            # Recompute bf10 (two-sided) in mpmath precision (eq. 25 of Ly et al., 2016)
+            mp_lbeta = mpmath.log(mpmath.beta(1 / mp_k, 1 / mp_k))
+            mp_log_hyperterm = mpmath.log(
+                mpmath.hyp2f1((mp_n - 1) / 2, (mp_n - 1) / 2, (mp_n + 2 / mp_k) / 2, mp_r**2)
+            )
+            bf10_mp = mpmath.exp(
+                (1 - 2 / mp_k) * mpmath.log(2)
+                + mpmath.log(mpmath.pi) / 2
+                - mp_lbeta
+                + mpmath.loggamma((mp_n + 2 / mp_k - 1) / 2)
+                - mpmath.loggamma((mp_n + 2 / mp_k) / 2)
+                + mp_log_hyperterm
+            )
+
+            # Compute the directional correction term C (eq. 27-28 of Ly et al., 2016)
+            hyper_term_mp = mpmath.hyp3f2(
+                1,
+                mp_n / 2,
+                mp_n / 2,
+                mpmath.mpf(3) / 2,
+                (2 + mp_k * (mp_n + 1)) / (2 * mp_k),
+                mp_r**2,
+            )
+            mp_log_term = (
+                2 * (mpmath.loggamma(mp_n / 2) - mpmath.loggamma((mp_n - 1) / 2)) - mp_lbeta
+            )
+            C_mp = (
+                mpmath.power(2, (3 * mp_k - 2) / mp_k)
+                * mp_k
+                * mp_r
+                / (2 + (mp_n - 1) * mp_k)
+                * mpmath.exp(mp_log_term)
+                * hyper_term_mp
+            )
+
+            bf10neg_mp = bf10_mp - C_mp
+            bf10pos_mp = bf10_mp + C_mp
             if alternative == "greater":
                 # We expect the correlation to be positive
-                bf10 = bf10pos
+                bf10 = float(max(bf10pos_mp, mpmath.mpf(0)))
             else:
                 # We expect the correlation to be negative
-                bf10 = bf10neg
+                bf10 = float(max(bf10neg_mp, mpmath.mpf(0)))
 
     return bf10
 

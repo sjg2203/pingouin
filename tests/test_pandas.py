@@ -5,9 +5,11 @@ Authors
 - Raphael Vallat <raphaelvallat9@gmail.com>
 """
 
-import numpy as np
-import pingouin as pg
 from unittest import TestCase
+
+import numpy as np
+
+import pingouin as pg
 
 df = pg.read_dataset("mixed_anova")
 df_aov3 = pg.read_dataset("anova3_unbalanced")
@@ -80,7 +82,7 @@ class TestParametric(TestCase):
             )
         )
 
-        # Test parwise correlations
+        # Test pairwise correlations
         corrs = data.pairwise_corr(columns=["X", "M", "Y"], method="spearman")
         corrs2 = pg.pairwise_corr(data=data, columns=["X", "M", "Y"], method="spearman")
         assert corrs["r"].equals(corrs2["r"])
@@ -97,6 +99,15 @@ class TestParametric(TestCase):
         corrs = data[["X", "Y", "M"]].pcorr()
         corrs2 = data.partial_corr(x="X", y="Y", covar="M")
         assert np.isclose(corrs.at["X", "Y"], corrs2.at["pearson", "r"])
+        # All off-diagonal values must be within [-1, 1] (clipping, improvement #7)
+        assert (corrs.values >= -1).all() and (corrs.values <= 1).all()
+        # Rank-deficient covariance matrix raises UserWarning (improvement #3)
+        import pytest
+
+        data_rank = data[["X", "Y", "M"]].copy()
+        data_rank["M2"] = data_rank["M"] + data_rank["X"]  # Perfect linear combination
+        with pytest.warns(UserWarning, match="rank-deficient"):
+            data_rank.pcorr()
 
         # Test rcorr (correlation matrix with p-values)
         # We compare against Pingouin pairwise_corr function

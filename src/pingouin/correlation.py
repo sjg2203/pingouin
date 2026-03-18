@@ -1,18 +1,18 @@
 # Author: Raphael Vallat <raphaelvallat9@gmail.com>
 import warnings
+
 import numpy as np
 import pandas as pd
 import pandas_flavor as pf
 from scipy.spatial.distance import pdist, squareform
-from scipy.stats import pearsonr, spearmanr, kendalltau
+from scipy.stats import kendalltau, pearsonr, spearmanr
 
-from pingouin.config import options
-from pingouin.power import power_corr
-from pingouin.multicomp import multicomp
-from pingouin.effsize import compute_esci
-from pingouin.utils import remove_na, _perm_pval, _postprocess_dataframe
-from pingouin.bayesian import bayesfactor_pearson
-
+from .bayesian import bayesfactor_pearson
+from .config import options
+from .effsize import compute_esci
+from .multicomp import multicomp
+from .power import power_corr
+from .utils import _perm_pval, _postprocess_dataframe, remove_na
 
 __all__ = ["corr", "partial_corr", "pcorr", "rcorr", "rm_corr", "distance_corr"]
 
@@ -109,8 +109,6 @@ def skipped(x, y, corr_type="spearman"):
 
     Code inspired by Matlab code from Cyril Pernet and Guillaume
     Rousselet [1]_.
-
-    Requires scikit-learn.
 
     References
     ----------
@@ -480,9 +478,8 @@ def corr(x, y, alternative="two-sided", method="pearson", **kwargs):
     both robust methods that returns the Spearman correlation coefficient after
     removing *bivariate* outliers. Briefly, the Shepherd pi uses a
     bootstrapping of the Mahalanobis distance to identify outliers, while the
-    skipped correlation is based on the minimum covariance determinant
-    (which requires scikit-learn). Note that these two methods are
-    significantly slower than the previous ones.
+    skipped correlation is based on the minimum covariance determinant. Note that these two methods
+    are significantly slower than the previous ones.
 
     The confidence intervals for the correlation coefficient are estimated
     using the Fisher transformation.
@@ -515,7 +512,7 @@ def corr(x, y, alternative="two-sided", method="pearson", **kwargs):
     >>> import pingouin as pg
     >>> # Generate random correlated samples
     >>> np.random.seed(123)
-    >>> mean, cov = [4, 6], [(1, .5), (.5, 1)]
+    >>> mean, cov = [4, 6], [(1, 0.5), (0.5, 1)]
     >>> x, y = np.random.multivariate_normal(mean, cov, 30).T
     >>> # Compute Pearson correlation
     >>> pg.corr(x, y).round(3)
@@ -543,29 +540,29 @@ def corr(x, y, alternative="two-sided", method="pearson", **kwargs):
 
     5. Percentage bend correlation (robust)
 
-    >>> pg.corr(x, y, method='percbend').round(3)
+    >>> pg.corr(x, y, method="percbend").round(3)
                n      r          CI95  p_val  power
     percbend  30  0.389  [0.03, 0.66]  0.034  0.581
 
     6. Shepherd's pi correlation (robust)
 
-    >>> pg.corr(x, y, method='shepherd').round(3)
+    >>> pg.corr(x, y, method="shepherd").round(3)
                n  outliers      r         CI95  p_val  power
     shepherd  30         2  0.437  [0.08, 0.7]   0.02  0.662
 
     7. Skipped spearman correlation (robust)
 
-    >>> pg.corr(x, y, method='skipped').round(3)
+    >>> pg.corr(x, y, method="skipped").round(3)
               n  outliers      r         CI95  p_val  power
     skipped  30         2  0.437  [0.08, 0.7]   0.02  0.662
 
     8. One-tailed Pearson correlation
 
-    >>> pg.corr(x, y, alternative="greater", method='pearson').round(3)
+    >>> pg.corr(x, y, alternative="greater", method="pearson").round(3)
             n      r            CI95  p_val   BF10  power
     pearson  30  0.147  [-0.17, 1.0]   0.22  0.467  0.194
 
-    >>> pg.corr(x, y, alternative="less", method='pearson').round(3)
+    >>> pg.corr(x, y, alternative="less", method="pearson").round(3)
             n        r          CI95  p_val   BF10  power
     pearson  30  0.147  [-1.0, 0.43]   0.78  0.137  0.008
 
@@ -578,8 +575,8 @@ def corr(x, y, alternative="two-sided", method="pearson", **kwargs):
     10. Using columns of a pandas dataframe
 
     >>> import pandas as pd
-    >>> data = pd.DataFrame({'x': x, 'y': y})
-    >>> pg.corr(data['x'], data['y']).round(3)
+    >>> data = pd.DataFrame({"x": x, "y": y})
+    >>> pg.corr(data["x"], data["y"]).round(3)
               n      r           CI95  p_val   BF10  power
     pearson  30  0.147  [-0.23, 0.48]  0.439  0.302  0.121
     """
@@ -774,34 +771,47 @@ def partial_corr(
     1. Partial correlation with one covariate
 
     >>> import pingouin as pg
-    >>> df = pg.read_dataset('partial_corr')
-    >>> pg.partial_corr(data=df, x='x', y='y', covar='cv1').round(3)
+    >>> df = pg.read_dataset("partial_corr")
+    >>> pg.partial_corr(data=df, x="x", y="y", covar="cv1").round(3)
               n      r          CI95  p_val
     pearson  30  0.568  [0.25, 0.77]  0.001
 
     2. Spearman partial correlation with several covariates
 
     >>> # Partial correlation of x and y controlling for cv1, cv2 and cv3
-    >>> pg.partial_corr(data=df, x='x', y='y', covar=['cv1', 'cv2', 'cv3'],
-    ...                 method='spearman').round(3)
+    >>> pg.partial_corr(
+    ...     data=df, x="x", y="y", covar=["cv1", "cv2", "cv3"], method="spearman"
+    ... ).round(3)
                n      r          CI95  p_val
     spearman  30  0.521  [0.18, 0.75]  0.005
 
     3. Same but one-sided test
 
-    >>> pg.partial_corr(data=df, x='x', y='y', covar=['cv1', 'cv2', 'cv3'],
-    ...                 alternative="greater", method='spearman').round(3)
+    >>> pg.partial_corr(
+    ...     data=df,
+    ...     x="x",
+    ...     y="y",
+    ...     covar=["cv1", "cv2", "cv3"],
+    ...     alternative="greater",
+    ...     method="spearman",
+    ... ).round(3)
                n      r         CI95  p_val
     spearman  30  0.521  [0.24, 1.0]  0.003
 
-    >>> pg.partial_corr(data=df, x='x', y='y', covar=['cv1', 'cv2', 'cv3'],
-    ...                 alternative="less", method='spearman').round(3)
+    >>> pg.partial_corr(
+    ...     data=df,
+    ...     x="x",
+    ...     y="y",
+    ...     covar=["cv1", "cv2", "cv3"],
+    ...     alternative="less",
+    ...     method="spearman",
+    ... ).round(3)
                n      r          CI95  p_val
     spearman  30  0.521  [-1.0, 0.72]  0.997
 
     4. As a pandas method
 
-    >>> df.partial_corr(x='x', y='y', covar=['cv1'], method='spearman').round(3)
+    >>> df.partial_corr(x="x", y="y", covar=["cv1"], method="spearman").round(3)
                n      r          CI95  p_val
     spearman  30  0.578  [0.27, 0.78]  0.001
 
@@ -817,7 +827,7 @@ def partial_corr(
 
     6. Semi-partial correlation on x
 
-    >>> pg.partial_corr(data=df, x='x', y='y', x_covar=['cv1', 'cv2', 'cv3']).round(3)
+    >>> pg.partial_corr(data=df, x="x", y="y", x_covar=["cv1", "cv2", "cv3"]).round(3)
               n      r         CI95  p_val
     pearson  30  0.463  [0.1, 0.72]  0.015
     """
@@ -846,8 +856,10 @@ def partial_corr(
     else:
         assert x != covar, "x and covar must be independent"
         assert y != covar, "y and covar must be independent"
-    # Check that columns exist
+    # Build column lists; covariates is used later for data-value checks
+    covariates = _flatten_list([covar, x_covar, y_covar])
     col = _flatten_list([x, y, covar, x_covar, y_covar])
+    # Check that columns exist
     assert all([c in data for c in col]), "columns are not in dataframe."
     # Check that columns are numeric
     assert all([data[c].dtype.kind in "bfiu" for c in col])
@@ -858,12 +870,35 @@ def partial_corr(
     k = data.shape[1] - 2  # Number of covariates
     assert n > 2, "Data must have at least 3 non-NAN samples."
 
+    # Check that no covariate is numerically identical to x or y (issue #375)
+    for c in covariates:
+        if np.allclose(data[x].to_numpy(), data[c].to_numpy()):
+            raise ValueError(
+                f"Covariate '{c}' is numerically identical to x='{x}'. "
+                "Partial correlation is undefined."
+            )
+        if np.allclose(data[y].to_numpy(), data[c].to_numpy()):
+            raise ValueError(
+                f"Covariate '{c}' is numerically identical to y='{y}'. "
+                "Partial correlation is undefined."
+            )
+
     # Calculate the partial corrrelation matrix - similar to pingouin.pcorr()
     if method == "spearman":
         # Convert the data to rank, similar to R cov()
-        V = data.rank(na_option="keep").cov(numeric_only=True)
+        V = data.rank(na_option="keep").cov()
     else:
-        V = data.cov(numeric_only=True)
+        V = data.cov()
+
+    # Warn if covariance matrix is rank-deficient (issue #435)
+    if np.linalg.matrix_rank(V) < V.shape[0]:
+        warnings.warn(
+            "The covariance matrix is rank-deficient, likely due to multicollinearity "
+            "among the covariates. Partial correlation results may be unreliable.",
+            UserWarning,
+            stacklevel=2,
+        )
+
     Vi = np.linalg.pinv(V, hermitian=True)  # Inverse covariance matrix
     Vi_diag = Vi.diagonal()
     D = np.diag(np.sqrt(1 / Vi_diag))
@@ -888,6 +923,9 @@ def partial_corr(
         # Correlation failed. Return NaN. When would this happen?
         return pd.DataFrame({"n": n, "r": np.nan, "CI95": np.nan, "p_val": np.nan}, index=[method])
 
+    # Clip r to [-1, 1] to guard against floating-point drift from pinv
+    r = float(np.clip(r, -1, 1))
+
     # Compute the two-sided p-value and confidence intervals
     # https://online.stat.psu.edu/stat505/lesson/6/6.3
     pval = _correl_pvalue(r, n, k, alternative)
@@ -908,7 +946,7 @@ def partial_corr(
 
     # Define order
     col_keep = ["n", "r", "CI95", "p_val"]
-    col_order = [k for k in col_keep if k in stats.keys().tolist()]
+    col_order = [c for c in col_keep if c in stats.keys().tolist()]
     return _postprocess_dataframe(stats)[col_order]
 
 
@@ -938,7 +976,7 @@ def pcorr(self):
     Examples
     --------
     >>> import pingouin as pg
-    >>> data = pg.read_dataset('mediation')
+    >>> data = pg.read_dataset("mediation")
     >>> data.pcorr().round(3)
               X      M      Y   Mbin   Ybin     W1     W2
     X     1.000  0.359  0.074 -0.019 -0.147 -0.148 -0.067
@@ -951,16 +989,24 @@ def pcorr(self):
 
     On a subset of columns
 
-    >>> data[['X', 'Y', 'M']].pcorr()
+    >>> data[["X", "Y", "M"]].pcorr()
               X         Y         M
     X  1.000000  0.036649  0.412804
     Y  0.036649  1.000000  0.540140
     M  0.412804  0.540140  1.000000
     """
     V = self.cov(numeric_only=True)  # Covariance matrix
+    if np.linalg.matrix_rank(V) < V.shape[0]:
+        warnings.warn(
+            "The covariance matrix is rank-deficient, likely due to multicollinearity. "
+            "Partial correlation results may be unreliable.",
+            UserWarning,
+            stacklevel=2,
+        )
     Vi = np.linalg.pinv(V, hermitian=True)  # Inverse covariance matrix
     D = np.diag(np.sqrt(1 / np.diag(Vi)))
     pcor = -1 * (D @ Vi @ D)  # Partial correlation matrix
+    np.clip(pcor, -1, 1, out=pcor)  # Guard against floating-point drift
     pcor[np.diag_indices_from(pcor)] = 1
     return pd.DataFrame(pcor, index=V.index, columns=V.columns)
 
@@ -1024,7 +1070,7 @@ def rcorr(
     >>> import pandas as pd
     >>> import pingouin as pg
     >>> # Load an example dataset of personality dimensions
-    >>> df = pg.read_dataset('pairwise_corr').iloc[:, 1:]
+    >>> df = pg.read_dataset("pairwise_corr").iloc[:, 1:]
     >>> # Add some missing values
     >>> df.iloc[[2, 5, 20], 2] = np.nan
     >>> df.iloc[[1, 4, 10], 3] = np.nan
@@ -1045,7 +1091,7 @@ def rcorr(
     Agreeableness      -0.134        0.054    0.161             -
 
     >>> # Spearman correlation and Holm adjustement for multiple comparisons
-    >>> df.iloc[:, 0:4].rcorr(method='spearman', padjust='holm')
+    >>> df.iloc[:, 0:4].rcorr(method="spearman", padjust="holm")
                   Neuroticism Extraversion Openness Agreeableness
     Neuroticism             -          ***                     **
     Extraversion       -0.325            -      ***
@@ -1053,9 +1099,8 @@ def rcorr(
     Agreeableness       -0.15         0.06    0.173             -
 
     >>> # Compare with the pg.pairwise_corr function
-    >>> pairwise = df.iloc[:, 0:4].pairwise_corr(method='spearman',
-    ...                                          padjust='holm')
-    >>> pairwise[['X', 'Y', 'r', 'p_corr']].round(3)  # Do not show all columns
+    >>> pairwise = df.iloc[:, 0:4].pairwise_corr(method="spearman", padjust="holm")
+    >>> pairwise[["X", "Y", "r", "p_corr"]].round(3)  # Do not show all columns
                   X              Y      r  p_corr
     0   Neuroticism   Extraversion -0.325   0.000
     1   Neuroticism       Openness -0.027   0.543
@@ -1072,13 +1117,12 @@ def rcorr(
     Agreeableness      -0.134       0.0539             -
 
     >>> # With the sample size on the upper triangle instead of the p-values
-    >>> df.iloc[:, [0, 1, 2]].rcorr(upper='n')
+    >>> df.iloc[:, [0, 1, 2]].rcorr(upper="n")
                  Neuroticism Extraversion Openness
     Neuroticism            -          500      497
     Extraversion       -0.35            -      497
     Openness           -0.01        0.265        -
     """
-    from numpy import triu_indices_from as tif
     from numpy import format_float_positional as ffp
     from scipy.stats import pearsonr, spearmanr
 
@@ -1096,15 +1140,18 @@ def rcorr(
         else:
             # Method = 'spearman'
             mat_upper = self.corr(method=lambda x, y: spearmanr(x, y)[1], numeric_only=True)
-
         if padjust is not None:
-            pvals = mat_upper.to_numpy()[tif(mat, k=1)]
-            mat_upper.to_numpy()[tif(mat, k=1)] = multicomp(pvals, alpha=0.05, method=padjust)[1]
+            mask = np.triu(np.ones(mat.shape, dtype=bool), k=1)
+            pvals = np.where(mask, mat_upper.to_numpy(), 0)
+            pvals_adj = multicomp(pvals, alpha=0.05, method=padjust)[1]
+            mat_upper = mat_upper.where(~mask, pvals_adj)
 
     # Convert r to text
     mat = mat.astype(str)
-    # Inplace modification of the diagonal
-    np.fill_diagonal(mat.to_numpy(), "-")
+
+    # Modification of the diagonal
+    for i in range(len(mat)):
+        mat.iat[i, i] = "-"
 
     if upper == "pval":
 
@@ -1121,7 +1168,9 @@ def rcorr(
             mat_upper = mat_upper.map(lambda x: ffp(x, precision=decimals))
 
     # Replace upper triangle by p-values or n
-    mat.to_numpy()[tif(mat, k=1)] = mat_upper.to_numpy()[tif(mat, k=1)]
+    mask = np.triu(np.ones(mat.shape, dtype=bool), k=1)
+    mat = mat.where(~mask, mat_upper)
+
     return mat
 
 
@@ -1176,8 +1225,8 @@ def rm_corr(data=None, x=None, y=None, subject=None):
     Examples
     --------
     >>> import pingouin as pg
-    >>> df = pg.read_dataset('rm_corr')
-    >>> pg.rm_corr(data=df, x='pH', y='PacO2', subject='Subject')
+    >>> df = pg.read_dataset("rm_corr")
+    >>> pg.rm_corr(data=df, x="pH", y="PacO2", subject="Subject")
                    r  dof      pval            CI95     power
     rm_corr -0.50677   38  0.000847  [-0.71, -0.23]  0.929579
 
@@ -1186,8 +1235,8 @@ def rm_corr(data=None, x=None, y=None, subject=None):
     .. plot::
 
         >>> import pingouin as pg
-        >>> df = pg.read_dataset('rm_corr')
-        >>> g = pg.plot_rm_corr(data=df, x='pH', y='PacO2', subject='Subject')
+        >>> df = pg.read_dataset("rm_corr")
+        >>> g = pg.plot_rm_corr(data=df, x="pH", y="PacO2", subject="Subject")
     """
     from pingouin import ancova, power_corr
 

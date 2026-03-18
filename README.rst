@@ -11,7 +11,7 @@
 .. image:: https://img.shields.io/github/license/raphaelvallat/pingouin.svg
   :target: https://github.com/raphaelvallat/pingouin/blob/master/LICENSE
 
-.. image:: https://github.com/raphaelvallat/pingouin/actions/workflows/python_tests.yml/badge.svg
+.. image:: https://github.com/raphaelvallat/pingouin/actions/workflows/pytest.yml/badge.svg
   :target: https://github.com/raphaelvallat/pingouin/actions
 
 .. image:: https://codecov.io/gh/raphaelvallat/pingouin/branch/master/graph/badge.svg
@@ -26,10 +26,10 @@
 
 ----------------
 
-.. image::  https://pingouin-stats.org/build/html/_images/logo_pingouin.png
+.. image::  https://pingouin-stats.org/_images/logo_pingouin.png
    :align:   center
 
-**Pingouin** is an open-source statistical package written in Python 3 and based mostly on Pandas and NumPy. Some of its main features are listed below. For a full list of available functions, please refer to the `API documentation <https://pingouin-stats.org/build/html/api.html#>`_.
+**Pingouin** is an open-source statistical package written in Python 3 and based mostly on Pandas and NumPy. Some of its main features are listed below. For a full list of available functions, please refer to the `API documentation <https://pingouin-stats.org/api.html>`_.
 
 1. ANOVAs: N-ways, repeated measures, mixed, ancova
 
@@ -76,27 +76,34 @@ Installation
 Dependencies
 ------------
 
-The main dependencies of Pingouin are :
+The main dependencies of Pingouin are:
 
-* `NumPy <https://numpy.org/>`_
-* `SciPy <https://www.scipy.org/>`_
-* `Pandas <https://pandas.pydata.org/>`_
+* `NumPy <https://numpy.org/>`_ >= 1.22.4
+* `SciPy <https://www.scipy.org/>`_ >= 1.8.0
+* `Pandas <https://pandas.pydata.org/>`_ >= 2.1.1
 * `Pandas-flavor <https://github.com/Zsailer/pandas_flavor>`_
-* `Statsmodels <https://www.statsmodels.org/>`_
+* `Statsmodels <https://www.statsmodels.org/>`_ >= 0.14.1
 * `Matplotlib <https://matplotlib.org/>`_
 * `Seaborn <https://seaborn.pydata.org/>`_
+* `Scikit-learn <https://scikit-learn.org/>`_ >= 1.2.2
+* `Tabulate <https://github.com/astanin/python-tabulate>`_
 
-In addition, some functions require :
+Some functions additionally require:
 
-* `Scikit-learn <https://scikit-learn.org/>`_
 * `Mpmath <http://mpmath.org/>`_
 
-Pingouin is a Python 3 package and is currently tested for Python 3.8-3.11.
+Pingouin is a Python 3 package and is currently tested for Python 3.10+.
 
 User installation
 -----------------
 
-Pingouin can be easily installed using pip
+Pingouin can be easily installed using `uv <https://docs.astral.sh/uv/>`_
+
+.. code-block:: shell
+
+  uv pip install pingouin
+
+pip
 
 .. code-block:: shell
 
@@ -112,20 +119,21 @@ New releases are frequent so always make sure that you have the latest version:
 
 .. code-block:: shell
 
-  pip install --upgrade pingouin
+  uv pip install --upgrade pingouin
 
 Development
 -----------
 
-To build and install from source, clone this repository or download the source archive and decompress the files
+To build and install from source, clone this repository and install in editable mode with `uv <https://docs.astral.sh/uv/>`_
 
 .. code-block:: shell
 
+  git clone https://github.com/raphaelvallat/pingouin.git
   cd pingouin
-  python -m build            # optional, build a wheel and sdist
-  pip install .              # install the package
-  pip install --editable .   # or editable install
-  pytest                     # test the package
+  uv pip install --group=dev --editable .
+
+  # test the package
+  pytest --verbose
 
 Quick start
 ============

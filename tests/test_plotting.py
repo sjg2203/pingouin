@@ -1,19 +1,20 @@
-import pytest
-import matplotlib
-import numpy as np
-from scipy import stats
-import seaborn as sns
-import matplotlib.pyplot as plt
 from unittest import TestCase
+
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pytest
+import seaborn as sns
+from scipy import stats
+
 from pingouin import read_dataset
 from pingouin.plotting import (
-    plot_blandaltman,
     _ppoints,
-    qqplot,
-    plot_paired,
-    plot_shift,
-    plot_rm_corr,
+    plot_blandaltman,
     plot_circmean,
+    plot_paired,
+    plot_rm_corr,
+    qqplot,
 )
 
 # Disable open figure warning
@@ -136,19 +137,8 @@ class TestPlotting(TestCase):
         )
         plt.close("all")
 
-    def test_plot_shift(self):
-        """Test plot_shift()."""
-        x = np.random.normal(5.5, 2, 50)
-        y = np.random.normal(6, 1.5, 50)
-        plot_shift(x, y)
-        plot_shift(
-            x, y, n_boot=100, percentiles=[5, 55, 95], show_median=False, seed=456, violin=False
-        )
-        plot_shift(x, y, paired=True, n_boot=100, percentiles=[25, 75], confidence=0.90)
-        plt.close("all")
-
     def test_plot_rm_corr(self):
-        """Test plot_shift()."""
+        """Test plot_rm_corr()."""
         df = read_dataset("rm_corr")
         g = plot_rm_corr(data=df, x="pH", y="PacO2", subject="Subject")
         g = plot_rm_corr(data=df, x="pH", y="PacO2", subject="Subject", legend=False)

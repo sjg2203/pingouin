@@ -7,10 +7,19 @@
 
 # -- Path setup --------------------------------------------------------------
 
+import inspect
 import os
 import sys
 import time
+from pathlib import Path
+
 import pingouin
+
+# Configure for source links
+GITHUB_USER = "raphaelvallat"
+GITHUB_REPO = "pingouin"
+GITHUB_BRANCH = "main"
+REPO_ROOT = Path(__file__).resolve().parents[1]
 
 sys.path.insert(0, os.path.abspath("sphinxext"))
 
@@ -36,7 +45,7 @@ issues_github_path = "raphaelvallat/pingouin"
 extensions = [
     "sphinx.ext.mathjax",
     "sphinx.ext.doctest",
-    "sphinx.ext.viewcode",
+    "sphinx.ext.linkcode",
     "sphinx.ext.githubpages",
     "sphinx.ext.autosummary",
     "sphinx.ext.autodoc",
@@ -108,7 +117,7 @@ html_theme_options = {
             "icon": "fa-brands fa-github",
         },
     ],
-    "use_edit_page_button": True,
+    "use_edit_page_button": False,
     "pygments_light_style": "vs",
     "pygments_dark_style": "monokai",
 }
@@ -122,13 +131,66 @@ html_sidebars = {
     "index": [],
 }
 
-html_context = {
-    "github_user": "raphaelvallat",
-    "github_repo": "pingouin",
-    "github_version": "main",
-    "doc_path": "docs",
-}
+# -- Linkcode ------------------------------------------------
 
+
+def linkcode_resolve(domain, info):
+    """
+    Resolve source code links to GitHub for Python objects.
+
+    Returns a GitHub URL including line number references when available.
+    """
+    if domain != "py":
+        return None
+
+    module_name = info.get("module")
+    full_name = info.get("fullname")
+
+    if not module_name or not full_name:
+        return None
+
+    module = sys.modules.get(module_name)
+    if module is None:
+        return None
+
+    # Resolve the object
+    obj = module
+    for part in full_name.split("."):
+        try:
+            obj = inspect.getattr_static(obj, part)
+        except AttributeError:
+            return None
+
+    # Unwrap decorators (important for @wraps, dataclasses, etc.)
+    obj = inspect.unwrap(obj)
+    source_file = inspect.getsourcefile(obj) or inspect.getfile(obj)
+    source_lines, start_line = inspect.getsourcelines(obj)
+    source_path = Path(source_file).resolve()
+    relative_path = source_path.relative_to(REPO_ROOT)
+
+    end_line = start_line + len(source_lines) - 1
+
+    return (
+        f"https://github.com/{GITHUB_USER}/{GITHUB_REPO}"
+        f"/blob/{GITHUB_BRANCH}/{relative_path.as_posix()}"
+        f"#L{start_line}-L{end_line}"
+    )
+
+
+# -- 404 page  ------------------------------------------------
+
+# Remove default url prefix on 404 pages
+# https://sphinx-notfound-page.readthedocs.io/en/latest/configuration.html#confval-notfound_urls_prefix
+notfound_urls_prefix = None
+
+notfound_context = {
+    "title": "Page Not Found (404)",
+    "body": """
+        <h1>Page Not Found</h1>
+        <p>Sorry, we couldn't find that page.</p>
+        <p>Try using the search box or go to the homepage.</p>
+        """,
+}
 
 # -- Intersphinx ------------------------------------------------
 

@@ -1,11 +1,12 @@
-import numpy as np
 from unittest import TestCase
-from scipy.stats import pearsonr
-from pingouin.parametric import ttest
-from pingouin.bayesian import bayesfactor_ttest, bayesfactor_binom
-from pingouin.bayesian import bayesfactor_pearson as bfp
 
+import numpy as np
 from pytest import approx
+from scipy.stats import pearsonr
+
+from pingouin.bayesian import bayesfactor_binom, bayesfactor_ttest
+from pingouin.bayesian import bayesfactor_pearson as bfp
+from pingouin.parametric import ttest
 
 np.random.seed(1234)
 x = np.random.normal(size=100)
@@ -41,11 +42,6 @@ class TestBayesian(TestCase):
         assert ttest(x, y, paired=True).at["T_test", "BF10"] == "0.135"
         assert int(float(ttest(x, z).at["T_test", "BF10"])) == 1290
         assert int(float(ttest(x, z, paired=True).at["T_test", "BF10"])) == 420
-        # Now check the alternative tails
-        assert bayesfactor_ttest(3.5, 20, 20, alternative="greater") > 1
-        assert bayesfactor_ttest(3.5, 20, 20, alternative="less") < 1
-        assert bayesfactor_ttest(-3.5, 20, 20, alternative="greater") < 1
-        assert bayesfactor_ttest(-3.5, 20, 20, alternative="less") > 1
         # Check with wrong T-value
         assert np.isnan(bayesfactor_ttest(np.nan, 20, paired=True))
 
@@ -80,6 +76,27 @@ class TestBayesian(TestCase):
         assert bfp(0.6, 20, method="wetzels") == appr(8.221)
         assert bfp(-0.6, 20, method="wetzels") == appr(8.221)
         assert bfp(0.6, 10, method="wetzels") == appr(1.278)
+
+        # Regression test for https://github.com/raphaelvallat/pingouin/issues/427
+        # When r is strongly negative, BF_greater must be near 0 (not spuriously large).
+        # Previously, catastrophic float64 cancellation caused BF_greater ~ 976 here.
+        assert bfp(-0.856, 64, alternative="greater") == appr(0.0)
+        assert bfp(-0.856, 64, alternative="less") == appr(
+            2 * bfp(-0.856, 64, alternative="two-sided"), rel=True
+        )
+        # Symmetry: BF_pos(r) == BF_neg(-r) and vice versa
+        assert bfp(0.856, 64, alternative="greater") == appr(
+            bfp(-0.856, 64, alternative="less"), rel=True
+        )
+        assert bfp(0.856, 64, alternative="less") == appr(
+            bfp(-0.856, 64, alternative="greater"), rel=True
+        )
+        # BF_pos + BF_neg == 2 * BF_10 (eq. 27-28 of Ly et al., 2016)
+        for r_val in [0.3, -0.3, 0.7, -0.7, -0.856]:
+            bf_two = bfp(r_val, 64, alternative="two-sided")
+            bf_pos = bfp(r_val, 64, alternative="greater")
+            bf_neg = bfp(r_val, 64, alternative="less")
+            assert bf_pos + bf_neg == appr(2 * bf_two, rel=True, thresh=1e-6)
 
         # Wrong input
         assert np.isnan(bfp(np.nan, 20))

@@ -5,12 +5,12 @@ Authors
 - Nicolas Legrand <legrand@cyceron.fr>
 """
 
+import matplotlib.pyplot as plt
+import matplotlib.transforms as transforms
 import numpy as np
 import pandas as pd
 import seaborn as sns
 from scipy import stats
-import matplotlib.pyplot as plt
-import matplotlib.transforms as transforms
 
 # Set default Seaborn preferences (disabled Pingouin >= 0.3.4)
 # See https://github.com/raphaelvallat/pingouin/issues/85
@@ -20,7 +20,6 @@ __all__ = [
     "plot_blandaltman",
     "qqplot",
     "plot_paired",
-    "plot_shift",
     "plot_rm_corr",
     "plot_circmean",
 ]
@@ -109,7 +108,7 @@ def plot_blandaltman(
 
         >>> import pingouin as pg
         >>> df = pg.read_dataset("blandaltman")
-        >>> ax = pg.plot_blandaltman(df['A'], df['B'])
+        >>> ax = pg.plot_blandaltman(df["A"], df["B"])
         >>> plt.tight_layout()
     """
     # Safety check
@@ -298,7 +297,7 @@ def qqplot(x, dist="norm", sparams=(), confidence=0.95, square=True, ax=None, **
         >>> import pingouin as pg
         >>> np.random.seed(123)
         >>> x = np.random.normal(size=50)
-        >>> ax = pg.qqplot(x, dist='norm')
+        >>> ax = pg.qqplot(x, dist="norm")
 
     Two Q-Q plots using two separate axes:
 
@@ -311,8 +310,8 @@ def qqplot(x, dist="norm", sparams=(), confidence=0.95, square=True, ax=None, **
         >>> x = np.random.normal(size=50)
         >>> x_exp = np.random.exponential(size=50)
         >>> fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(9, 4))
-        >>> ax1 = pg.qqplot(x, dist='norm', ax=ax1, confidence=False)
-        >>> ax2 = pg.qqplot(x_exp, dist='expon', ax=ax2)
+        >>> ax1 = pg.qqplot(x, dist="norm", ax=ax1, confidence=False)
+        >>> ax2 = pg.qqplot(x_exp, dist="expon", ax=ax2)
 
     Using custom location / scale parameters as well as another Seaborn style
 
@@ -325,8 +324,8 @@ def qqplot(x, dist="norm", sparams=(), confidence=0.95, square=True, ax=None, **
         >>> np.random.seed(123)
         >>> x = np.random.normal(size=50)
         >>> mean, std = 0, 0.8
-        >>> sns.set_style('darkgrid')
-        >>> ax = pg.qqplot(x, dist='norm', sparams=(mean, std))
+        >>> sns.set_style("darkgrid")
+        >>> ax = pg.qqplot(x, dist="norm", sparams=(mean, std))
     """
     # Update default kwargs with specified inputs
     _scatter_kwargs = {"marker": "o", "color": "blue"}
@@ -482,9 +481,9 @@ def plot_paired(
     .. plot::
 
         >>> import pingouin as pg
-        >>> df = pg.read_dataset('mixed_anova').query("Time != 'January'")
+        >>> df = pg.read_dataset("mixed_anova").query("Time != 'January'")
         >>> df = df.query("Group == 'Meditation' and Subject > 40")
-        >>> ax = pg.plot_paired(data=df, dv='Scores', within='Time', subject='Subject')
+        >>> ax = pg.plot_paired(data=df, dv="Scores", within="Time", subject="Subject")
 
     Paired plot on an existing axis (no boxplot and uniform color):
 
@@ -492,12 +491,18 @@ def plot_paired(
 
         >>> import pingouin as pg
         >>> import matplotlib.pyplot as plt
-        >>> df = pg.read_dataset('mixed_anova').query("Time != 'January'")
+        >>> df = pg.read_dataset("mixed_anova").query("Time != 'January'")
         >>> df = df.query("Group == 'Meditation' and Subject > 40")
         >>> fig, ax1 = plt.subplots(1, 1, figsize=(5, 4))
-        >>> pg.plot_paired(data=df, dv='Scores', within='Time',
-        ...                subject='Subject', ax=ax1, boxplot=False,
-        ...                colors=['grey', 'grey', 'grey'])  # doctest: +SKIP
+        >>> pg.plot_paired(
+        ...     data=df,
+        ...     dv="Scores",
+        ...     within="Time",
+        ...     subject="Subject",
+        ...     ax=ax1,
+        ...     boxplot=False,
+        ...     colors=["grey", "grey", "grey"],
+        ... )  # doctest: +SKIP
 
     Horizontal paired plot with three unique within-levels:
 
@@ -505,20 +510,22 @@ def plot_paired(
 
         >>> import pingouin as pg
         >>> import matplotlib.pyplot as plt
-        >>> df = pg.read_dataset('mixed_anova').query("Group == 'Meditation'")
+        >>> df = pg.read_dataset("mixed_anova").query("Group == 'Meditation'")
         >>> # df = df.query("Group == 'Meditation' and Subject > 40")
-        >>> pg.plot_paired(data=df, dv='Scores', within='Time',
-        ...                subject='Subject', orient='h')  # doctest: +SKIP
+        >>> pg.plot_paired(
+        ...     data=df, dv="Scores", within="Time", subject="Subject", orient="h"
+        ... )  # doctest: +SKIP
 
     With the boxplot on the foreground:
 
     .. plot::
 
         >>> import pingouin as pg
-        >>> df = pg.read_dataset('mixed_anova').query("Time != 'January'")
+        >>> df = pg.read_dataset("mixed_anova").query("Time != 'January'")
         >>> df = df.query("Group == 'Control'")
-        >>> ax = pg.plot_paired(data=df, dv='Scores', within='Time',
-        ...                     subject='Subject', boxplot_in_front=True)
+        >>> ax = pg.plot_paired(
+        ...     data=df, dv="Scores", within="Time", subject="Subject", boxplot_in_front=True
+        ... )
     """
     from pingouin.utils import _check_dataframe
 
@@ -662,242 +669,6 @@ def plot_paired(
     return ax
 
 
-def plot_shift(
-    x,
-    y,
-    paired=False,
-    n_boot=1000,
-    percentiles=np.arange(10, 100, 10),
-    confidence=0.95,
-    seed=None,
-    show_median=True,
-    violin=True,
-):
-    """Shift plot.
-
-    Parameters
-    ----------
-    x, y : array_like
-        First and second set of observations.
-    paired : bool
-        Specify whether ``x`` and ``y`` are related (i.e. repeated measures) or independent.
-
-        .. versionadded:: 0.3.0
-    n_boot : int
-        Number of bootstrap iterations. The higher, the better, the slower.
-    percentiles: array_like
-        Sequence of percentiles to compute, which must be between 0 and 100 inclusive.
-        Default set to [10, 20, 30, 40, 50, 60, 70, 80, 90].
-    confidence : float
-        Confidence level (0.95 = 95%) for the confidence intervals.
-    seed : int or None
-        Random seed for generating bootstrap samples, can be integer or None for no seed (default).
-    show_median: boolean
-        If True (default), show the median with black lines.
-    violin: boolean
-        If True (default), plot the density of X and Y distributions. Defaut set to True.
-
-    Returns
-    -------
-    fig : matplotlib Figure instance
-        Matplotlib Figure. To get the individual axes, use fig.axes.
-
-    See also
-    --------
-    harrelldavis
-
-    Notes
-    -----
-    The shift plot is described in [1]_. It computes a shift function [2]_ for two (in)dependent
-    groups using the robust Harrell-Davis quantile estimator in conjunction with bias-corrected
-    bootstrap confidence intervals.
-
-    References
-    ----------
-    .. [1] Rousselet, G. A., Pernet, C. R. and Wilcox, R. R. (2017). Beyond
-           differences in means: robust graphical methods to compare two groups
-           in neuroscience. Eur J Neurosci, 46: 1738-1748.
-           doi:10.1111/ejn.13610
-
-    .. [2] https://garstats.wordpress.com/2016/07/12/shift-function/
-
-    Examples
-    --------
-    Default shift plot
-
-    .. plot::
-
-        >>> import numpy as np
-        >>> import pingouin as pg
-        >>> np.random.seed(42)
-        >>> x = np.random.normal(5.5, 2, 50)
-        >>> y = np.random.normal(6, 1.5, 50)
-        >>> fig = pg.plot_shift(x, y)
-
-    With different options, and custom axes labels
-
-    .. plot::
-
-        >>> import pingouin as pg
-        >>> import matplotlib.pyplot as plt
-        >>> data = pg.read_dataset("pairwise_corr")
-        >>> fig = pg.plot_shift(data["Neuroticism"], data["Conscientiousness"], paired=True,
-        ...                     n_boot=2000, percentiles=[25, 50, 75], show_median=False, seed=456,
-        ...                     violin=False)
-        >>> fig.axes[0].set_xlabel("Groups")
-        >>> fig.axes[0].set_ylabel("Values", size=15)
-        >>> fig.axes[0].set_title("Comparing Neuroticism and Conscientiousness", size=15)
-        >>> fig.axes[1].set_xlabel("Neuroticism quantiles", size=12)
-        >>> plt.tight_layout()
-    """
-    from pingouin.regression import _bias_corrected_ci
-    from pingouin.nonparametric import harrelldavis as hd
-
-    # Safety check
-    x = np.asarray(x)
-    y = np.asarray(y)
-    percentiles = np.asarray(percentiles) / 100  # Convert to 0 - 1 range
-    assert x.ndim == 1, "x must be 1D."
-    assert y.ndim == 1, "y must be 1D."
-    nx, ny = x.size, y.size
-    assert not np.isnan(x).any(), "Missing values are not allowed."
-    assert not np.isnan(y).any(), "Missing values are not allowed."
-    assert nx >= 10, "x must have at least 10 samples."
-    assert ny >= 10, "y must have at least 10 samples."
-    assert 0 < confidence < 1, "confidence must be between 0 and 1."
-    if paired:
-        assert nx == ny, "x and y must have the same size when paired=True."
-
-    # Robust percentile
-    x_per = hd(x, percentiles)
-    y_per = hd(y, percentiles)
-    delta = y_per - x_per
-
-    # Compute bootstrap distribution of differences
-    rng = np.random.RandomState(seed)
-    if paired:
-        bootsam = rng.choice(np.arange(nx), size=(nx, n_boot), replace=True)
-        bootstat = hd(y[bootsam], percentiles, axis=0) - hd(x[bootsam], percentiles, axis=0)
-    else:
-        x_list = rng.choice(x, size=(nx, n_boot), replace=True)
-        y_list = rng.choice(y, size=(ny, n_boot), replace=True)
-        bootstat = hd(y_list, percentiles, axis=0) - hd(x_list, percentiles, axis=0)
-
-    # Find upper and lower confidence interval for each quantiles
-    # Bias-corrected bootstrapped confidence interval
-    lower, median_per, upper = [], [], []
-    for i, d in enumerate(delta):
-        ci = _bias_corrected_ci(bootstat[i, :], d, alpha=(1 - confidence))
-        median_per.append(_bias_corrected_ci(bootstat[i, :], d, alpha=1)[0])
-        lower.append(ci[0])
-        upper.append(ci[1])
-
-    lower = np.asarray(lower)
-    median_per = np.asarray(median_per)
-    upper = np.asarray(upper)
-
-    # Create long-format dataFrame for use with Seaborn
-    data = pd.DataFrame({"value": np.concatenate([x, y]), "variable": ["X"] * nx + ["Y"] * ny})
-
-    #############################
-    # Plots X and Y distributions
-    #############################
-    fig = plt.figure(figsize=(8, 5))
-    ax1 = plt.subplot2grid((3, 3), (0, 0), rowspan=2, colspan=3)
-
-    # Boxplot X & Y
-    def adjacent_values(vals, q1, q3):
-        upper_adjacent_value = q3 + (q3 - q1) * 1.5
-        upper_adjacent_value = np.clip(upper_adjacent_value, q3, vals[-1])
-
-        lower_adjacent_value = q1 - (q3 - q1) * 1.5
-        lower_adjacent_value = np.clip(lower_adjacent_value, vals[0], q1)
-        return lower_adjacent_value, upper_adjacent_value
-
-    for dis, pos in zip([x, y], [1.2, -0.2]):
-        qrt1, medians, qrt3 = np.percentile(dis, [25, 50, 75])
-        whiskers = adjacent_values(np.sort(dis), qrt1, qrt3)
-        ax1.plot(medians, pos, marker="o", color="white", zorder=10)
-        ax1.hlines(pos, qrt1, qrt3, color="k", linestyle="-", lw=7, zorder=9)
-        ax1.hlines(pos, whiskers[0], whiskers[1], color="k", linestyle="-", lw=2, zorder=9)
-
-    ax1 = sns.stripplot(
-        data=data,
-        x="value",
-        y="variable",
-        orient="h",
-        order=["Y", "X"],
-        palette=["#88bedc", "#cfcfcf"],
-    )
-
-    if violin:
-        vl = plt.violinplot([y, x], showextrema=False, vert=False, widths=1)
-
-        # Upper plot
-        paths = vl["bodies"][0].get_paths()[0]
-        paths.vertices[:, 1][paths.vertices[:, 1] >= 1] = 1
-        paths.vertices[:, 1] = paths.vertices[:, 1] - 1.2
-        vl["bodies"][0].set_edgecolor("k")
-        vl["bodies"][0].set_facecolor("#88bedc")
-        vl["bodies"][0].set_alpha(0.8)
-
-        # Lower plot
-        paths = vl["bodies"][1].get_paths()[0]
-        paths.vertices[:, 1][paths.vertices[:, 1] <= 2] = 2
-        paths.vertices[:, 1] = paths.vertices[:, 1] - 0.8
-        vl["bodies"][1].set_edgecolor("k")
-        vl["bodies"][1].set_facecolor("#cfcfcf")
-        vl["bodies"][1].set_alpha(0.8)
-
-        # Rescale ylim
-        ax1.set_ylim(2, -1)
-
-    for i in range(len(percentiles)):
-        # Connection between quantiles
-        if upper[i] < 0:
-            col = "#4c72b0"
-        elif lower[i] > 0:
-            col = "#c34e52"
-        else:
-            col = "darkgray"
-        plt.plot([y_per[i], x_per[i]], [0.2, 0.8], marker="o", color=col, zorder=10)
-        # X quantiles
-        plt.plot([x_per[i], x_per[i]], [0.8, 1.2], "k--", zorder=9)
-        # Y quantiles
-        plt.plot([y_per[i], y_per[i]], [-0.2, 0.2], "k--", zorder=9)
-
-    if show_median:
-        x_med, y_med = np.median(x), np.median(y)
-        plt.plot([x_med, x_med], [0.8, 1.2], "k-")
-        plt.plot([y_med, y_med], [-0.2, 0.2], "k-")
-
-    plt.xlabel("Scores (a.u.)", size=15)
-    ax1.set_yticklabels(["Y", "X"], size=15)
-    ax1.set_ylabel("")
-
-    #######################
-    # Plots quantiles shift
-    #######################
-    ax2 = plt.subplot2grid((3, 3), (2, 0), rowspan=1, colspan=3)
-    for i, per in enumerate(x_per):
-        if upper[i] < 0:
-            col = "#4c72b0"
-        elif lower[i] > 0:
-            col = "#c34e52"
-        else:
-            col = "darkgray"
-        plt.plot([per, per], [upper[i], lower[i]], lw=3, color=col, zorder=10)
-        plt.plot(per, median_per[i], marker="o", ms=10, color=col, zorder=10)
-
-    plt.axhline(y=0, ls="--", lw=2, color="gray")
-
-    ax2.set_xlabel("X quantiles", size=15)
-    ax2.set_ylabel("Y - X quantiles \n differences (a.u.)", size=10)
-    plt.tight_layout()
-
-    return fig
-
-
 def plot_rm_corr(
     data=None,
     x=None,
@@ -963,8 +734,8 @@ def plot_rm_corr(
     .. plot::
 
         >>> import pingouin as pg
-        >>> df = pg.read_dataset('rm_corr')
-        >>> g = pg.plot_rm_corr(data=df, x='pH', y='PacO2', subject='Subject')
+        >>> df = pg.read_dataset("rm_corr")
+        >>> g = pg.plot_rm_corr(data=df, x="pH", y="PacO2", subject="Subject")
 
     With some tweakings
 
@@ -972,12 +743,16 @@ def plot_rm_corr(
 
         >>> import pingouin as pg
         >>> import seaborn as sns
-        >>> df = pg.read_dataset('rm_corr')
-        >>> sns.set_theme(style='darkgrid', font_scale=1.2)
-        >>> g = pg.plot_rm_corr(data=df, x='pH', y='PacO2',
-        ...                     subject='Subject', legend=True,
-        ...                     kwargs_facetgrid=dict(height=4.5, aspect=1.5,
-        ...                                           palette='Spectral'))
+        >>> df = pg.read_dataset("rm_corr")
+        >>> sns.set_theme(style="darkgrid", font_scale=1.2)
+        >>> g = pg.plot_rm_corr(
+        ...     data=df,
+        ...     x="pH",
+        ...     y="PacO2",
+        ...     subject="Subject",
+        ...     legend=True,
+        ...     kwargs_facetgrid=dict(height=4.5, aspect=1.5, palette="Spectral"),
+        ... )
     """
     # Check that stasmodels is installed
     from pingouin.utils import _is_statsmodels_installed
@@ -1080,20 +855,25 @@ def plot_circmean(
         >>> import pingouin as pg
         >>> import matplotlib.pyplot as plt
         >>> _, ax = plt.subplots(1, 1, figsize=(3, 3))
-        >>> ax = pg.plot_circmean([0.05, -0.8, 1.2, 0.8, 0.5, -0.3, 0.3, 0.7],
-        ...                       kwargs_markers=dict(color='k', mfc='k'),
-        ...                       kwargs_arrow=dict(ec='k', fc='k'), ax=ax)
+        >>> ax = pg.plot_circmean(
+        ...     [0.05, -0.8, 1.2, 0.8, 0.5, -0.3, 0.3, 0.7],
+        ...     kwargs_markers=dict(color="k", mfc="k"),
+        ...     kwargs_arrow=dict(ec="k", fc="k"),
+        ...     ax=ax,
+        ... )
 
     .. plot::
 
         >>> import pingouin as pg
         >>> import seaborn as sns
-        >>> sns.set_theme(font_scale=1.5, style='white')
-        >>> ax = pg.plot_circmean([0.8, 1.5, 3.14, 5.2, 6.1, 2.8, 2.6, 3.2],
-        ...                       kwargs_markers=dict(marker="None"))
+        >>> sns.set_theme(font_scale=1.5, style="white")
+        >>> ax = pg.plot_circmean(
+        ...     [0.8, 1.5, 3.14, 5.2, 6.1, 2.8, 2.6, 3.2], kwargs_markers=dict(marker="None")
+        ... )
     """
     from matplotlib.patches import Circle
-    from .circular import circ_r, circ_mean
+
+    from .circular import circ_mean, circ_r
 
     # Sanity checks
     angles = np.asarray(angles)
