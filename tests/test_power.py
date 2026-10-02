@@ -146,6 +146,10 @@ class TestPower(TestCase):
         assert np.isclose(
             power_anova(eta_squared=eta, k=4, n=20, power=0.80, alpha=None), 0.2268337
         )
+        # Achieved eta-squared > 0.5 (small samples): round-trip with the achieved power
+        eta_large = power_anova(k=2, n=3, power=0.80)
+        assert eta_large > 0.5
+        assert np.isclose(power_anova(eta_squared=eta_large, k=2, n=3), 0.80)
         # Error
         with pytest.raises(ValueError):
             power_anova(eta_squared=eta, k=2)
@@ -199,6 +203,14 @@ class TestPower(TestCase):
             rtol=1e-4,
         )
 
+        # Achieved eta-squared > 0.5 and required n < 5: round-trip with the achieved power
+        eta_large = power_rm_anova(m=2, n=3, power=0.90)
+        assert eta_large > 0.5
+        assert np.isclose(power_rm_anova(eta_squared=eta_large, m=2, n=3), 0.90)
+        n_small = power_rm_anova(eta_squared=0.5, m=3, power=0.80)
+        assert 2 < n_small < 5
+        assert np.isclose(power_rm_anova(eta_squared=0.5, m=3, n=n_small), 0.80)
+
         # Error
         with pytest.raises(ValueError):
             power_rm_anova(eta_squared=eta, m=2)
@@ -218,6 +230,12 @@ class TestPower(TestCase):
         assert np.isclose(power_corr(r=-0.1, n=20, alternative="greater"), 0.01941224)
         assert np.isclose(power_corr(r=0.5, power=0.80, alternative="greater"), 22.60907)
         assert np.isclose(power_corr(n=20, power=0.80, alternative="greater"), 0.5286949)
+        # pwr can't solve for alpha one-sided, so check by plugging the value back in.
+        # Power must keep rising with alpha > 0.5.
+        alpha = power_corr(r=0.5, n=20, power=0.80, alpha=None, alternative="greater")
+        assert np.isclose(alpha, 0.0689074, rtol=1e-03)
+        assert np.isclose(power_corr(r=0.5, n=20, alpha=alpha, alternative="greater"), 0.80)
+        assert power_corr(r=0.5, n=20, alpha=0.9, alternative="greater") > 0.99
 
         # Less
         assert np.isclose(power_corr(r=-0.5, n=20, alternative="less"), 0.7509873)
@@ -225,6 +243,9 @@ class TestPower(TestCase):
         assert np.isclose(power_corr(r=0.1, n=20, alternative="less"), 0.01941224)
         assert np.isclose(power_corr(r=-0.5, power=0.80, alternative="less"), 22.60907)
         assert np.isclose(power_corr(n=20, power=0.80, alternative="less"), -0.5286949)
+        alpha = power_corr(r=-0.5, n=20, power=0.80, alpha=None, alternative="less")
+        assert np.isclose(alpha, 0.0689074, rtol=1e-03)
+        assert np.isclose(power_corr(r=-0.5, n=20, alpha=alpha, alternative="less"), 0.80)
 
         # Error & Warning
         with pytest.raises(ValueError):
